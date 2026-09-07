@@ -39,7 +39,7 @@ role_families       = ["swe", "ai", "data"]
 max_years_experience = 8     # a posting whose FLOOR is 8+ is dropped
 min_score_keep      = 25     # below this, do not even store it
 min_score_dashboard = 45     # below this, keep it but hide it from the site
-min_score_notify    = 70     # below this, no Telegram push
+min_score_notify    = 60     # below this, no Telegram push
                              # lexical scores run lower than embedding scores;
                              # run `watcher.py stats` after changing scorer
 
