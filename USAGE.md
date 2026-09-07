@@ -254,8 +254,8 @@ python -m http.server -d site 8000
 
 Open `http://localhost:8000`.
 
-To preview the layout before your first sweep, copy `site/jobs.sample.json` to
-`site/jobs.json` first.
+To preview the layout before your first sweep, copy `docs/jobs.sample.json` to
+`docs/jobs.json` first.
 
 ### 4.1 What a row tells you
 
@@ -501,7 +501,7 @@ Everything so far was manual. Now make it run itself.
 1. Push this folder to a GitHub repo.
 2. Repo → **Settings → Secrets and variables → Actions → New repository secret**.
    Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
-3. Repo → **Settings → Pages** → source `main`, folder `/site`. Your dashboard is
+3. Repo → **Settings → Pages** → source `main`, folder `/docs`. Your dashboard is
    now a real URL you can open from your phone.
 4. Repo → **Actions** tab → enable workflows.
 
@@ -603,8 +603,8 @@ request is never mistaken for an empty company.
 |---|---|
 | `config.toml` | Your profile text and all the thresholds |
 | `companies.txt` | Who to watch, their tier, and who may notify you |
-| `site/index.html` | The dashboard |
-| `site/jobs.json` | The data it reads. Written by every sweep. |
+| `docs/index.html` | The dashboard |
+| `docs/jobs.json` | The data it reads. Written by every sweep. |
 | `jobs.db` | The memory. Deleting it means re-seeding from scratch. |
 | `jobwatch/match.py` | Title patterns, experience parser, scorers |
 | `jobwatch/ats.py` | The five hiring-software adapters |

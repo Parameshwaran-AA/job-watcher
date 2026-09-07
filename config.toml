@@ -45,7 +45,7 @@ min_score_notify    = 70     # below this, no Telegram push
 
 [run]
 database        = "jobs.db"
-export_path     = "site/jobs.json"
+export_path     = "docs/jobs.json"
 concurrency     = 8
 request_timeout = 20
 per_host_delay_ms = 120      # politeness gate, shared across all companies

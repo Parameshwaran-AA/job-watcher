@@ -9,7 +9,7 @@ It never applies to anything. Every Apply button opens the company's own page.
 ```
 companies.txt  →  ATS APIs  →  title sieve  →  experience sieve  →  match score
                                                                           ↓
-                            Telegram (watchlist only)  ←  memory  →  site/jobs.json
+                            Telegram (watchlist only)  ←  memory  →  docs/jobs.json
 ```
 
 **New here? Read [USAGE.md](USAGE.md)** — the full walkthrough, tiers and
