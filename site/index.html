@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14181d; --ground:#fafbfc; --panel:#fff; --rule:#e4e8ed;
+  --muted:#67727e; --faint:#9aa4ae; --signal:#b4234b; --bar:#2c343d;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --ink:#e8ecf0; --ground:#101318; --panel:#161a20; --rule:#272d35;
+         --muted:#98a2ad; --faint:#6b7581; --signal:#f2789b; --bar:#c3ccd6; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+     font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 80px}
+
+header{margin-bottom:22px}
+h1{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
+.status{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin:0}
+.status b{color:var(--ink);font-weight:500}
+
+.controls{position:sticky;top:0;z-index:5;background:var(--ground);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:12px 0;margin-bottom:2px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ctl{display:flex;flex-direction:column;gap:3px}
+.ctl label{font-size:11.5px;color:var(--faint)}
+input,select{font-family:var(--sans);font-size:13.5px;color:var(--ink);
+  background:var(--panel);border:1px solid var(--rule);border-radius:5px;
+  padding:6px 8px;height:32px}
+input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
+  outline:2px solid var(--signal);outline-offset:1px}
+.multi{position:relative}
+#multiBtn{width:220px;text-align:left;font-family:var(--sans);font-size:13.5px;
+  color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:5px;
+  padding:6px 26px 6px 8px;height:32px;cursor:pointer;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+#multiBtn::after{content:"\25BE";position:absolute;right:9px;top:7px;color:var(--faint)}
+.menu{position:absolute;top:36px;left:0;z-index:20;width:260px;max-height:340px;
+  display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule);
+  border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.menu-head{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--rule)}
+.menu-head button{flex:1;font-family:var(--sans);font-size:12.5px;color:var(--ink);
+  background:var(--ground);border:1px solid var(--rule);border-radius:5px;padding:5px;cursor:pointer}
+.menu-list{overflow-y:auto;padding:4px}
+.menu-list label{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13.5px;
+  border-radius:5px;cursor:pointer}
+.menu-list label:hover{background:var(--ground)}
+.menu-list input{width:15px;height:15px;accent-color:var(--bar);cursor:pointer;flex-shrink:0}
+.menu-list .cnt{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+#score{width:120px;height:auto;padding:0;border:none;background:none;accent-color:var(--bar)}
+.reset{align-self:flex-end;background:none;border:none;color:var(--muted);
+  font-family:var(--sans);font-size:12.5px;cursor:pointer;padding:6px 2px;text-decoration:underline}
+
+.chk{flex-direction:row;align-items:center;gap:6px;align-self:flex-end;padding-bottom:7px;
+     font-size:12.5px;color:var(--muted);cursor:pointer}
+.chk input{width:14px;height:14px;padding:0;accent-color:var(--bar);cursor:pointer}
+.over{color:var(--faint);font-size:12px;margin-left:7px;font-style:italic}
+.count{font-family:var(--mono);font-size:12px;color:var(--faint);padding:10px 0 2px}
+
+.row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;
+     padding:13px 0;border-bottom:1px solid var(--rule)}
+.title{font-size:15px;font-weight:500;margin:0;text-decoration:none;color:var(--ink)}
+.title:hover{text-decoration:underline}
+.sub{font-size:13px;color:var(--muted);margin:2px 0 0}
+.co{color:var(--ink);background:none;border:none;padding:0;font:inherit;
+    cursor:pointer;text-decoration:underline;text-decoration-color:var(--rule);
+    text-underline-offset:2px}
+.co:hover{text-decoration-color:var(--signal)}
+.new{color:var(--signal);font-weight:600;margin-right:7px;font-size:13px}
+.num{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:right;
+     white-space:nowrap;min-width:62px}
+.sc{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--ink);
+    text-align:right;min-width:30px}
+.gauge{height:2px;background:var(--rule);margin-top:5px;width:34px;margin-left:auto}
+.gauge i{display:block;height:2px;background:var(--bar)}
+.apply{font-size:13px;color:var(--ink);text-decoration:none;border:1px solid var(--rule);
+  border-radius:5px;padding:5px 11px;background:var(--panel);white-space:nowrap}
+.apply:hover{border-color:var(--bar)}
+.right{display:flex;align-items:center;gap:14px}
+
+.empty{padding:44px 0;color:var(--muted);font-size:14px;max-width:52ch}
+.empty code{font-family:var(--mono);font-size:12.5px;background:var(--panel);
+  border:1px solid var(--rule);border-radius:4px;padding:1px 5px}
+@media (max-width:600px){
+  .row{grid-template-columns:1fr auto}
+  .num{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Job watch</h1>
+  <p class="status" id="status">Loading…</p>
+</header>
+
+<div class="controls">
+  <div class="ctl">
+    <label>Companies</label>
+    <div class="multi" id="multi">
+      <button type="button" id="multiBtn" aria-expanded="false">All companies</button>
+      <div class="menu" id="menu" hidden>
+        <div class="menu-head">
+          <button type="button" id="allBtn">Select all</button>
+          <button type="button" id="noneBtn">Clear</button>
+        </div>
+        <div class="menu-list" id="menuList"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ctl">
+    <label for="family">Role</label>
+    <select id="family">
+      <option value="all">All roles</option>
+      <option value="swe">Software</option>
+      <option value="ai">AI / ML</option>
+      <option value="data">Data</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label for="since">Found</label>
+    <select id="since">
+      <option value="0">Any time</option>
+      <option value="24">Last 24 hours</option>
+      <option value="72">Last 3 days</option>
+      <option value="168">Last 7 days</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label for="sort">Sort</label>
+    <select id="sort">
+      <option value="found">Newest found</option>
+      <option value="score">Best match</option>
+      <option value="live">Least competition</option>
+      <option value="company">Company</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label for="score">Min match <span id="scoreOut">45</span></label>
+    <input type="range" id="score" min="0" max="95" step="5" value="45">
+  </div>
+  <label class="ctl chk" for="over">
+    <input type="checkbox" id="over">
+    <span>Include 8+ yr roles</span>
+  </label>
+  <button class="reset" id="reset">Clear</button>
+</div>
+
+<p class="count" id="count"></p>
+<div id="list"></div>
+
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let DATA = {jobs: [], companies: [], generated: 0};
+let SELECTED = new Set();   // empty = all companies
+
+const ago = s => {
+  const h = (Date.now()/1000 - s) / 3600;
+  if (h < 1) return "just now";
+  if (h < 24) return Math.round(h) + "h ago";
+  return Math.round(h/24) + "d ago";
+};
+const expText = j =>
+  j.expMin === null || j.expMin === undefined ? "exp not stated"
+  : j.expMax ? j.expMin + "\u2013" + j.expMax + " yrs"
+  : j.expMin + "+ yrs";
+
+function state(){
+  return {
+    fam: $("family").value,
+    since: +$("since").value,
+    sort: $("sort").value,
+    min: +$("score").value,
+    over: $("over").checked
+  };
+}
+
+function render(){
+  const s = state();
+  $("scoreOut").textContent = s.min;
+  const now = Date.now()/1000;
+
+  let rows = DATA.jobs.filter(j => {
+    if (j.score < s.min) return false;
+    if (j.over && !s.over) return false;
+    if (s.fam !== "all" && j.family !== s.fam) return false;
+    if (s.since && (now - j.found) > s.since * 3600) return false;
+    if (SELECTED.size && !SELECTED.has(j.company)) return false;
+    return true;
+  });
+
+  rows.sort((a,b) =>
+    s.sort === "score"   ? b.score - a.score :
+    s.sort === "live"    ? a.liveDays - b.liveDays :
+    s.sort === "company" ? a.company.localeCompare(b.company) || b.found - a.found :
+                           b.found - a.found);
+
+  const hidden = DATA.jobs.filter(j => j.over).length;
+  $("count").textContent =
+    rows.length + " of " + DATA.jobs.length + " roles"
+    + (SELECTED.size ? " \u00b7 " + SELECTED.size + " compan" + (SELECTED.size === 1 ? "y" : "ies") : "")
+    + (!s.over && hidden ? " \u00b7 " + hidden + " hidden as 8+ yrs" : "");
+
+  if (!rows.length){
+    $("list").innerHTML = '<p class="empty">Nothing matches. Lower the match threshold, '
+      + 'widen the time range, or clear the company filter.</p>';
+    return;
+  }
+
+  const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  $("list").innerHTML = rows.map(j => {
+    const fresh = (now - j.found) < 86400 ? '<span class="new">new</span>' : '';
+    const over = j.over ? '<span class="over">asks 8+ yrs</span>' : '';
+    return '<div class="row">'
+      + '<div><a class="title" href="' + esc(j.url) + '" target="_blank" rel="noopener">'
+      + fresh + esc(j.title) + '</a>'
+      + '<p class="sub"><button class="co" data-co="' + esc(j.company) + '">' + esc(j.company) + '</button>'
+      + (j.location ? ' &middot; ' + esc(j.location) : '')
+      + ' &middot; ' + expText(j) + '</p></div>'
+      + '<div class="num">' + ago(j.found) + '<br>live ' + j.liveDays + 'd</div>'
+      + '<div class="right"><div><div class="sc">' + j.score + '</div>'
+      + '<div class="gauge"><i style="width:' + j.score + '%"></i></div></div>'
+      + '<a class="apply" href="' + esc(j.url) + '" target="_blank" rel="noopener">Apply</a></div>'
+      + '</div>';
+  }).join("");
+}
+
+// Clicking a company name in a row narrows to just that company.
+$("list").addEventListener("click", e => {
+  const btn = e.target.closest(".co");
+  if (!btn) return;
+  SELECTED = new Set([btn.dataset.co]);
+  syncMenu(); updateBtnLabel(); render();
+});
+
+["family","since","sort","score","over"].forEach(id =>
+  $(id).addEventListener("input", render));
+
+$("reset").addEventListener("click", () => {
+  SELECTED.clear();
+  $("family").value = "all"; $("since").value = "0";
+  $("sort").value = "found"; $("score").value = 45; $("over").checked = false;
+  syncMenu(); updateBtnLabel(); render();
+});
+
+// ---- company checkbox dropdown ----
+function updateBtnLabel(){
+  const n = SELECTED.size;
+  $("multiBtn").textContent =
+    n === 0 ? "All companies"
+    : n === 1 ? [...SELECTED][0]
+    : n + " companies selected";
+}
+function syncMenu(){
+  document.querySelectorAll("#menuList input").forEach(cb => {
+    cb.checked = SELECTED.has(cb.value);
+  });
+}
+function buildMenu(){
+  const counts = {};
+  DATA.jobs.forEach(j => { counts[j.company] = (counts[j.company] || 0) + 1; });
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  $("menuList").innerHTML = DATA.companies.map(c =>
+    '<label><input type="checkbox" value="' + esc(c) + '">'
+    + '<span>' + esc(c) + '</span><span class="cnt">' + (counts[c] || 0) + '</span></label>'
+  ).join("");
+  $("menuList").querySelectorAll("input").forEach(cb =>
+    cb.addEventListener("change", () => {
+      cb.checked ? SELECTED.add(cb.value) : SELECTED.delete(cb.value);
+      updateBtnLabel(); render();
+    }));
+}
+$("multiBtn").addEventListener("click", () => {
+  const m = $("menu"); const open = !m.hidden;
+  m.hidden = open; $("multiBtn").setAttribute("aria-expanded", String(!open));
+});
+$("allBtn").addEventListener("click", () => {
+  SELECTED = new Set(DATA.companies); syncMenu(); updateBtnLabel(); render();
+});
+$("noneBtn").addEventListener("click", () => {
+  SELECTED.clear(); syncMenu(); updateBtnLabel(); render();
+});
+document.addEventListener("click", e => {
+  if (!$("multi").contains(e.target)) {
+    $("menu").hidden = true; $("multiBtn").setAttribute("aria-expanded", "false");
+  }
+});
+
+fetch("jobs.json?t=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DATA = d;
+    const fresh = d.jobs.filter(j => (Date.now()/1000 - j.found) < 86400).length;
+    $("status").innerHTML = "Swept <b>" + ago(d.generated) + "</b> &middot; <b>" + fresh
+      + "</b> new in 24h &middot; <b>" + d.jobs.length + "</b> roles across <b>"
+      + d.companies.length + "</b> companies";
+    buildMenu(); updateBtnLabel();
+    render();
+  })
+  .catch(() => {
+    $("status").textContent = "No data yet";
+    $("list").innerHTML = '<p class="empty">Run <code>python watcher.py run</code> to fill this page. '
+      + 'The first sweep of each company records its jobs quietly without alerting, so run it twice '
+      + 'before expecting anything new. If you opened this file directly, serve the folder instead: '
+      + '<code>python -m http.server -d site</code>.</p>';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+name: job watch
+
+on:
+  schedule:
+    # All times UTC. GitHub delays scheduled runs by 10-30 min under load;
+    # that is normal and does not need fixing.
+    - cron: "5 * * * *"           # tier 1 - watchlist, hourly
+    - cron: "20 2,8,14,20 * * *"  # tier 2 - every 6 hours
+    - cron: "40 3 * * *"          # tier 3 - long tail, daily
+  workflow_dispatch:
+    inputs:
+      tiers:
+        description: "Tiers to sweep (space separated)"
+        default: "1 2 3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-watch
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pick tiers for this trigger
+        id: tier
+        run: |
+          case "${{ github.event.schedule }}" in
+            "5 * * * *")          echo "t=1"     >> $GITHUB_OUTPUT ;;
+            "20 2,8,14,20 * * *") echo "t=1 2"   >> $GITHUB_OUTPUT ;;
+            "40 3 * * *")         echo "t=1 2 3" >> $GITHUB_OUTPUT ;;
+            *) echo "t=${{ github.event.inputs.tiers || '1 2 3' }}" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-minilm-v1
+
+      - name: Sweep
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python watcher.py run --tier ${{ steps.tier.outputs.t }}
+
+      - name: Commit results
+        run: |
+          git config user.name  "job-watcher"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f jobs.db site/jobs.json
+          git diff --staged --quiet || git commit -m "sweep tier ${{ steps.tier.outputs.t }}"
+          git push
+
+      # Committing on every sweep doubles as the keepalive that stops GitHub
+      # disabling this schedule after 60 days of repository inactivity.
+
+  heartbeat:
+    needs: sweep
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tell me it broke
+        env:
+          T: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          C: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          [ -z "$T" ] && exit 0
+          curl -s -X POST "https://api.telegram.org/bot$T/sendMessage" \
+            -d chat_id="$C" \
+            -d text="job-watcher sweep failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

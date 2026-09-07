@@ -1,0 +1,60 @@
+# job-watcher configuration
+
+[profile]
+# Paste your resume, or just describe the work you want. This is the text every
+# job description gets compared against. Longer and more specific is better;
+# 200-600 words is the sweet spot. Skills and tools matter more than adjectives.
+text = """
+Software Engineer with 4+ years building backend services, distributed data pipelines,
+and production ML systems.
+
+Languages: Python, Java, SQL, Scala, TypeScript, JavaScript, C++, Bash, PySpark, Spark SQL.
+Backend and APIs: FastAPI, Spring Boot, Django, Node.js, Express, REST API design, GraphQL,
+microservices, event-driven architecture, Swagger/OpenAPI, React.
+Big data and pipelines: Apache Spark, Apache Airflow, dbt Core, Kafka, ETL/ELT pipeline
+design, data ingestion and validation, data pipeline architecture.
+ML and AI systems: PyTorch, TensorFlow, scikit-learn, Pandas, NumPy, Sentence Transformers,
+embeddings, feature engineering, model training and evaluation, model serving, inference
+optimization, RAG, FAISS, LangChain, vector search, cosine similarity ranking.
+MLOps and DevOps: Docker, Docker Compose, Kubernetes, Helm, Jenkins, GitLab CI, GitHub
+Actions, AWS CodePipeline, CI/CD automation, Nginx, Prometheus, Grafana, vLLM, SSE streaming.
+Cloud and warehousing: AWS (S3, EC2, Lambda, SageMaker, EKS, Glue), Snowflake, PostgreSQL,
+MySQL, MongoDB, Redis, schema design, indexing, partitioning, query optimization.
+Practices: Agile/Scrum, Git, system design, code and design review, pytest, JUnit, Jest,
+incident triage, root cause analysis.
+
+Experience building REST API platforms sustaining 500K+ monthly transactions, distributed
+Spark/Airflow/dbt pipelines feeding Snowflake, real-time model inference services in
+FastAPI, LLM serving gateways on Kubernetes GPU clusters with KV cache optimization and
+session-aware load balancing, and self-hosted embedding search systems.
+
+Seeking: software engineer, backend engineer, machine learning engineer, ML engineer,
+AI engineer, data engineer, platform engineer, MLOps engineer, or applied scientist roles.
+Mid-level, 4 years experience.
+"""
+
+[match]
+use_embeddings      = true   # false forces the dependency-free lexical scorer
+role_families       = ["swe", "ai", "data"]
+max_years_experience = 8     # a posting whose FLOOR is 8+ is dropped
+min_score_keep      = 25     # below this, do not even store it
+min_score_dashboard = 45     # below this, keep it but hide it from the site
+min_score_notify    = 70     # below this, no Telegram push
+                             # lexical scores run lower than embedding scores;
+                             # run `watcher.py stats` after changing scorer
+
+[run]
+database        = "jobs.db"
+export_path     = "site/jobs.json"
+concurrency     = 8
+request_timeout = 20
+per_host_delay_ms = 120      # politeness gate, shared across all companies
+max_jobs_per_company = 400   # stops one agency board flooding a run
+close_after_missing_runs = 2 # missing from 2 good sweeps = the job is gone
+dashboard_days  = 45         # rows older than this (by when WE first saw them) drop off the site
+max_live_days   = 90         # hide postings open on the company site longer than this;
+                             # a job live 1000+ days is a ghost. 0 disables the hide.
+
+[telegram]
+max_per_message = 10
+# set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID as environment variables
