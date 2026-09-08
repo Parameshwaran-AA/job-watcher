@@ -46,6 +46,7 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
 .menu{position:absolute;top:36px;left:0;z-index:20;width:260px;max-height:340px;
   display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule);
   border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.menu[hidden]{display:none}
 .menu-head{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--rule)}
 .menu-head button{flex:1;font-family:var(--sans);font-size:12.5px;color:var(--ink);
   background:var(--ground);border:1px solid var(--rule);border-radius:5px;padding:5px;cursor:pointer}
