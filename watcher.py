@@ -191,7 +191,11 @@ def cmd_run(cfg, companies, args) -> int:
                     tally["seeded_boards"] += 1
 
     # Silent companies still land on the dashboard; they just never buzz.
-    alerts = store.pending_alerts(cfg["match"]["min_score_notify"], notify_boards)
+    alerts = store.pending_alerts(
+        cfg["match"]["min_score_notify"],
+        notify_boards,
+        cfg["match"].get("us_only", False),
+    )
     store.clear_alert_backlog()
     if notify.send(alerts, cfg["telegram"]["max_per_message"]):
         store.mark_notified([r["uid"] for r in alerts])

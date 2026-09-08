@@ -9,6 +9,8 @@ import sqlite3
 import time
 from pathlib import Path
 
+from jobwatch import geo
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS boards (
   code        TEXT PRIMARY KEY,
@@ -148,13 +150,17 @@ class Store:
         )
         return cur.rowcount
 
-    def pending_alerts(self, min_score: int, boards: set[str]) -> list[sqlite3.Row]:
+    def pending_alerts(self, min_score: int, boards: set[str],
+                       us_only: bool = False) -> list[sqlite3.Row]:
         rows = self.db.execute(
             "SELECT * FROM jobs WHERE notified=0 AND status='open' AND score>=?"
             " ORDER BY score DESC",
             (min_score,),
         ).fetchall()
-        return [r for r in rows if r["board"] in boards]
+        rows = [r for r in rows if r["board"] in boards]
+        if us_only:
+            rows = [r for r in rows if geo.is_us(r["location"])]
+        return rows
 
     def mark_notified(self, uids: list[str]) -> None:
         self.db.executemany("UPDATE jobs SET notified=1 WHERE uid=?", [(u,) for u in uids])
@@ -198,6 +204,7 @@ class Store:
                 "posted": round(r["posted_at"]) if r["posted_at"] else None,
                 "liveDays": live_days,
                 "over": bool(r["over_ceiling"]),
+                "us": geo.is_us(r["location"]),
             })
         companies = sorted({j["company"] for j in jobs})
         payload = {

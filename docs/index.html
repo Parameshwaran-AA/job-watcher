@@ -149,6 +149,10 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
     <label for="score">Min match <span id="scoreOut">45</span></label>
     <input type="range" id="score" min="0" max="95" step="5" value="45">
   </div>
+  <label class="ctl chk" for="usOnly">
+    <input type="checkbox" id="usOnly" checked>
+    <span>US only</span>
+  </label>
   <label class="ctl chk" for="over">
     <input type="checkbox" id="over">
     <span>Include 8+ yr roles</span>
@@ -182,7 +186,8 @@ function state(){
     since: +$("since").value,
     sort: $("sort").value,
     min: +$("score").value,
-    over: $("over").checked
+    over: $("over").checked,
+    us: $("usOnly").checked
   };
 }
 
@@ -194,6 +199,7 @@ function render(){
   let rows = DATA.jobs.filter(j => {
     if (j.score < s.min) return false;
     if (j.over && !s.over) return false;
+    if (s.us && j.us === false) return false;
     if (s.fam !== "all" && j.family !== s.fam) return false;
     if (s.since && (now - j.found) > s.since * 3600) return false;
     if (SELECTED.size && !SELECTED.has(j.company)) return false;
@@ -207,10 +213,12 @@ function render(){
                            b.found - a.found);
 
   const hidden = DATA.jobs.filter(j => j.over).length;
+  const nonUs = DATA.jobs.filter(j => j.us === false).length;
   $("count").textContent =
     rows.length + " of " + DATA.jobs.length + " roles"
     + (SELECTED.size ? " \u00b7 " + SELECTED.size + " compan" + (SELECTED.size === 1 ? "y" : "ies") : "")
-    + (!s.over && hidden ? " \u00b7 " + hidden + " hidden as 8+ yrs" : "");
+    + (!s.over && hidden ? " \u00b7 " + hidden + " hidden as 8+ yrs" : "")
+    + (s.us && nonUs ? " \u00b7 " + nonUs + " hidden as non-US" : "");
 
   if (!rows.length){
     $("list").innerHTML = '<p class="empty">Nothing matches. Lower the match threshold, '
@@ -244,13 +252,14 @@ $("list").addEventListener("click", e => {
   syncMenu(); updateBtnLabel(); render();
 });
 
-["family","since","sort","score","over"].forEach(id =>
+["family","since","sort","score","over","usOnly"].forEach(id =>
   $(id).addEventListener("input", render));
 
 $("reset").addEventListener("click", () => {
   SELECTED.clear();
   $("family").value = "all"; $("since").value = "0";
   $("sort").value = "found"; $("score").value = 45; $("over").checked = false;
+  $("usOnly").checked = true;
   syncMenu(); updateBtnLabel(); render();
 });
 

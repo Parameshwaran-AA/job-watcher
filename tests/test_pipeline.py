@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from jobwatch import match  # noqa: E402
+from jobwatch import geo, match  # noqa: E402
 from jobwatch.ats import Posting, clean  # noqa: E402
 from jobwatch.store import Store, dupe_key  # noqa: E402
 
@@ -191,6 +191,46 @@ with tempfile.TemporaryDirectory() as tmp:
     import json
     data = json.loads(out2.read_text())
     check("over flag exported", sorted(j["over"] for j in data["jobs"]), [False, False, True])
+
+print("US location filter")
+for loc in ["United States", "Remote - US", "Remote (US)", "Remote U.S.", "Remote US",
+            "New York, NY", "Austin, TX", "San Francisco", "San Francisco, California",
+            "Mountain View, California", "Washington, DC", "North America",
+            "Seattle, Washington, United States", "Maryland; Virginia; Washington, D.C.",
+            "Remote, Canada; Remote, United States"]:
+    check(f"US: {loc}", geo.is_us(loc), True)
+
+for loc in ["London, UK", "Remote, United Kingdom", "London, England", "Hybrid (UK)",
+            "Remote Canada", "Toronto", "Vancouver, British Columbia, Canada",
+            "Bangalore, India", "Bengaluru, India", "Remote, Poland", "Warsaw",
+            "Tokyo, Japan", "S\u00e3o Paulo", "Tel Aviv, Israel", "Reykjav\u00edk",
+            "Sydney, Australia", "Belgrade, Serbia", "Munich, Germany",
+            "Remote (EMEA)", "Remote, Canada; Remote, United Kingdom"]:
+    check(f"not US: {loc}", geo.is_us(loc), False)
+
+# An unreadable location is shown, never hidden. Missing a real job costs more
+# than showing one extra.
+for loc in [None, "", "   ", "Hybrid", "In-Office", "Remote, Global"]:
+    check(f"unknown passes: {loc!r}", geo.is_us(loc), True)
+
+print("US filter reaches alerts and the export")
+with tempfile.TemporaryDirectory() as tmp:
+    st3 = Store(Path(tmp) / "geo.db")
+    st3.board_ok("greenhouse:acme")
+    st3.record(p("Backend Engineer", ext="10", loc="New York, NY"), "swe", (2, 4), 90, False)
+    st3.record(p("Backend Engineer, EU", ext="11", loc="London, UK"), "swe", (2, 4), 90, False)
+    st3.record(p("Backend Engineer, Anywhere", ext="12", loc=""), "swe", (2, 4), 90, False)
+    check("us_only drops the London role",
+          sorted(a["title"] for a in st3.pending_alerts(70, {"greenhouse:acme"}, us_only=True)),
+          ["Backend Engineer", "Backend Engineer, Anywhere"])
+    check("us_only off keeps all three",
+          len(st3.pending_alerts(70, {"greenhouse:acme"}, us_only=False)), 3)
+    st3.commit()
+    out3 = Path(tmp) / "geo.json"
+    st3.export(out3, min_score=40)
+    import json as _json
+    rows = _json.loads(out3.read_text())["jobs"]
+    check("us flag exported", sorted(j["us"] for j in rows), [False, True, True])
 
 print(f"\n{ok} passed, {fail} failed")
 sys.exit(1 if fail else 0)

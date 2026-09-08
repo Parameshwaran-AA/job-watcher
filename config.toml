@@ -42,6 +42,10 @@ min_score_dashboard = 45     # below this, keep it but hide it from the site
 min_score_notify    = 60     # below this, no Telegram push
                              # lexical scores run lower than embedding scores;
                              # run `watcher.py stats` after changing scorer
+us_only             = true   # only alert on jobs that could be in the US.
+                             # A blank or unreadable location counts as US, on the
+                             # grounds that an unfilled field is usually an oversight.
+                             # The dashboard has its own toggle, independent of this.
 
 [run]
 database        = "jobs.db"
