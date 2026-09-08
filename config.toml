@@ -1,36 +1,30 @@
 # job-watcher configuration
 
 [profile]
-# Paste your resume, or just describe the work you want. This is the text every
-# job description gets compared against. Longer and more specific is better;
-# 200-600 words is the sweet spot. Skills and tools matter more than adjectives.
+# The text every job description is compared against.
+# HARD LIMIT: the embedding model (all-MiniLM-L6-v2) truncates at 256 word pieces,
+# roughly 120-140 words once punctuation is counted. Anything past that is silently
+# ignored, so keep this SHORT and put the role keywords FIRST. Check with:
+#   .venv/bin/python -c "import tomllib,transformers as t; \
+#     tk=t.AutoTokenizer.from_pretrained('sentence-transformers/all-MiniLM-L6-v2'); \
+#     print(len(tk(tomllib.load(open('config.toml','rb'))['profile']['text'])['input_ids']))"
 text = """
-Software Engineer with 4+ years building backend services, distributed data pipelines,
-and production ML systems.
+Seeking software engineer, backend engineer, machine learning engineer, AI engineer,
+data engineer or MLOps engineer roles in the United States. Mid-level, 4 years.
 
-Languages: Python, Java, SQL, Scala, TypeScript, JavaScript, C++, Bash, PySpark, Spark SQL.
-Backend and APIs: FastAPI, Spring Boot, Django, Node.js, Express, REST API design, GraphQL,
-microservices, event-driven architecture, Swagger/OpenAPI, React.
-Big data and pipelines: Apache Spark, Apache Airflow, dbt Core, Kafka, ETL/ELT pipeline
-design, data ingestion and validation, data pipeline architecture.
-ML and AI systems: PyTorch, TensorFlow, scikit-learn, Pandas, NumPy, Sentence Transformers,
-embeddings, feature engineering, model training and evaluation, model serving, inference
-optimization, RAG, FAISS, LangChain, vector search, cosine similarity ranking.
-MLOps and DevOps: Docker, Docker Compose, Kubernetes, Helm, Jenkins, GitLab CI, GitHub
-Actions, AWS CodePipeline, CI/CD automation, Nginx, Prometheus, Grafana, vLLM, SSE streaming.
-Cloud and warehousing: AWS (S3, EC2, Lambda, SageMaker, EKS, Glue), Snowflake, PostgreSQL,
-MySQL, MongoDB, Redis, schema design, indexing, partitioning, query optimization.
-Practices: Agile/Scrum, Git, system design, code and design review, pytest, JUnit, Jest,
-incident triage, root cause analysis.
+Backend APIs in Java, Spring Boot, Python and FastAPI. Built the order management and
+pricing platform at Ford serving 500K+ transactions a month and tuned MySQL schemas,
+indexing and partitioning across millions of daily records.
 
-Experience building REST API platforms sustaining 500K+ monthly transactions, distributed
-Spark/Airflow/dbt pipelines feeding Snowflake, real-time model inference services in
-FastAPI, LLM serving gateways on Kubernetes GPU clusters with KV cache optimization and
-session-aware load balancing, and self-hosted embedding search systems.
+Distributed data pipelines on Apache Spark, Apache Airflow and dbt Core modelled in
+Snowflake. Kafka, ETL, PostgreSQL, MongoDB, Redis.
 
-Seeking: software engineer, backend engineer, machine learning engineer, ML engineer,
-AI engineer, data engineer, platform engineer, MLOps engineer, or applied scientist roles.
-Mid-level, 4 years experience.
+Production ML with PyTorch, Sentence Transformers, embeddings, RAG, FAISS and vector
+search. Shipped a real-time forecasting inference service, a self-hosted embedding
+search service, and an LLM serving gateway scheduling agent sessions across vLLM
+replicas on Kubernetes GPU clusters.
+
+Docker, Kubernetes, Helm, CI/CD, Prometheus, AWS.
 """
 
 [match]

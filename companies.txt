@@ -61,3 +61,29 @@ ashby:supabase               3   silent   Supabase
 ashby:posthog                3   silent   PostHog
 ashby:deel                   3   silent   Deel
 greenhouse:netlify           3   silent   Netlify
+
+# added 2026-09-08 - every token below was verified against its ATS API
+greenhouse:anthropic         1   notify   Anthropic
+ashby:snowflake              1   notify   Snowflake
+greenhouse:waymo             1   notify   Waymo
+greenhouse:coinbase          2   silent   Coinbase
+greenhouse:airbnb            2   silent   Airbnb
+greenhouse:lyft              2   silent   Lyft
+greenhouse:pinterest         2   silent   Pinterest
+greenhouse:block             2   silent   Block
+greenhouse:datadog           2   silent   Datadog
+greenhouse:mongodb           2   silent   MongoDB
+greenhouse:fivetran          2   silent   Fivetran
+ashby:confluent              2   silent   Confluent
+greenhouse:nuro              2   silent   Nuro
+greenhouse:roblox            3   silent   Roblox
+greenhouse:dropbox           3   silent   Dropbox
+greenhouse:chime             3   silent   Chime
+greenhouse:grafanalabs       3   silent   Grafana Labs
+ashby:clickhouse             3   silent   ClickHouse
+ashby:baseten                3   silent   Baseten
+ashby:modal                  3   silent   Modal
+greenhouse:motional          3   silent   Motional
+greenhouse:lucidmotors       3   silent   Lucid Motors
+greenhouse:project44         3   silent   project44
+greenhouse:flexe             3   silent   Flexe
