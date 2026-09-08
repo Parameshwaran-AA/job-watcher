@@ -29,37 +29,35 @@ greenhouse:databricks        1   notify   Databricks
 ashby:openai                 1   notify   OpenAI
 ashby:ramp                   1   notify   Ramp
 ashby:linear                 1   notify   Linear
-lever:plaid                  1   notify   Plaid
+ashby:plaid                  1   notify   Plaid
 
 # ---------------------------------------------------------------- tier 2
 greenhouse:figma             2   silent   Figma
 greenhouse:robinhood         2   silent   Robinhood
 greenhouse:instacart         2   silent   Instacart
 greenhouse:asana             2   silent   Asana
-greenhouse:doordash          2   silent   DoorDash
+greenhouse:doordashusa       2   silent   DoorDash
 greenhouse:brex              2   silent   Brex
 greenhouse:vercel            2   silent   Vercel
 ashby:notion                 2   silent   Notion
 ashby:cohere                 2   silent   Cohere
 ashby:vanta                   2   silent   Vanta
 lever:spotify                2   silent   Spotify
-lever:mux                    2   silent   Mux
+ashby:mux                    2   silent   Mux
 
 # ---------------------------------------------------------------- tier 3
 greenhouse:reddit            3   silent   Reddit
 greenhouse:duolingo          3   silent   Duolingo
-greenhouse:sentry            3   silent   Sentry
+ashby:sentry                 3   silent   Sentry
 greenhouse:gitlab            3   silent   GitLab
-greenhouse:hashicorp         3   silent   HashiCorp
 greenhouse:twilio            3   silent   Twilio
 greenhouse:cloudflare        3   silent   Cloudflare
 greenhouse:samsara           3   silent   Samsara
 greenhouse:affirm            3   silent   Affirm
-greenhouse:benchling         3   silent   Benchling
+ashby:benchling              3   silent   Benchling
 greenhouse:flexport          3   silent   Flexport
 greenhouse:scaleai           3   silent   Scale AI
 ashby:supabase               3   silent   Supabase
 ashby:posthog                3   silent   PostHog
 ashby:deel                   3   silent   Deel
-lever:netlify                3   silent   Netlify
-lever:voiceflow              3   silent   Voiceflow
+greenhouse:netlify           3   silent   Netlify
