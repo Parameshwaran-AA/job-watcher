@@ -53,6 +53,7 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
 .bar button:hover{border-color:var(--bar)}
 .bar button.on{border-color:var(--signal);color:var(--signal)}
 .bar .sep{flex:1}
+.stale-note{font-size:12px;color:var(--signal);margin-right:2px}
 .modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,.55)}
 .modal[hidden]{display:none}
@@ -245,6 +246,9 @@ button.ref{font-family:var(--sans);background:none;cursor:pointer;line-height:1.
   <button type="button" id="importBtn">Import CSV</button>
   <input type="file" id="importFile" accept=".csv,text/csv" hidden>
   <span class="sep"></span>
+  <span id="stale" class="stale-note" hidden></span>
+  <button type="button" id="sweepBtn">Sweep now</button>
+  <button type="button" id="sponsorBtn">Refresh H-1B</button>
   <button type="button" id="addCoBtn">Add a company</button>
 </div>
 
@@ -704,11 +708,15 @@ $("importFile").addEventListener("change", e => {
   e.target.value = "";
 });
 
-// ---- add a company ----
-$("addCoBtn").addEventListener("click", () => {
-  window.open("https://github.com/Parameshwaran-AA/job-watcher/actions/workflows/add-company.yml",
-              "_blank", "noopener");
-});
+// ---- links into the Actions tab ----
+// A static page cannot fire a workflow: that needs a GitHub token, and anything
+// in this file is public. So these open the workflow page, where "Run workflow"
+// is one click away and GitHub does the authenticating.
+const ACTIONS = "https://github.com/Parameshwaran-AA/job-watcher/actions/workflows/";
+const openWf = f => window.open(ACTIONS + f, "_blank", "noopener");
+$("sweepBtn").addEventListener("click", () => openWf("watch.yml"));
+$("sponsorBtn").addEventListener("click", () => openWf("refresh-sponsors.yml"));
+$("addCoBtn").addEventListener("click", () => openWf("add-company.yml"));
 
 saveApplied();
 
@@ -721,6 +729,12 @@ fetch("jobs.json?t=" + Date.now())
     $("status").innerHTML = "Swept <b>" + ago(d.generated) + "</b> &middot; <b>" + fresh
       + "</b> new in 24h &middot; <b>" + d.jobs.length + "</b> roles across <b>"
       + d.companies.length + "</b> companies";
+    const hrs = (Date.now()/1000 - d.generated) / 3600;
+    if (hrs >= 2){
+      $("stale").textContent = "last swept " + Math.round(hrs) + "h ago";
+      $("stale").hidden = false;
+      $("sweepBtn").classList.add("on");
+    }
     buildMenu(); updateBtnLabel();
     render();
     if (!$("appliedPanel").hidden) renderApplied();
