@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from jobwatch import geo, match  # noqa: E402
+from jobwatch import geo, match, roles  # noqa: E402
 from jobwatch.ats import Posting, clean  # noqa: E402
 from jobwatch.store import Store, dupe_key  # noqa: E402
 
@@ -231,6 +231,41 @@ with tempfile.TemporaryDirectory() as tmp:
     import json as _json
     rows = _json.loads(out3.read_text())["jobs"]
     check("us flag exported", sorted(j["us"] for j in rows), [False, True, True])
+
+print("intern detection")
+for t in ["Software Engineer Intern", "Software Engineer Intern (Summer 2027)",
+          "[Summer 2027] Software Engineer Intern", "Data Science Intern (Winter 2027)",
+          "Machine Learning Intern/Co-op  (Winter 2027)", "Machine Learning Internship, Behaviors Research",
+          "2027 Summer Intern, BS, SysEng Software Engineer", "Analytics Engineer Intern",
+          "Software Engineer, AI Platform - Intern", "Backend Apprentice", "Engineering Trainee"]:
+    check(f"intern: {t}", roles.is_intern(t), True)
+
+# New-grad and early-career postings are real salaried jobs, not internships.
+for t in ["Software Engineer, New Grad (Dec 2026)", "Software Engineer - New Grad",
+          "Software Engineer, Early Career (AI)", "AI Research Fellowship, (Summer and Fall 2026)",
+          "Senior Software Engineer - Backend", "Internal Tools Engineer",
+          "International Payments Engineer", "Staff ML Engineer, AI", "", None]:
+    check(f"not intern: {t!r}", roles.is_intern(t), False)
+
+print("intern filter reaches alerts and the export")
+with tempfile.TemporaryDirectory() as tmp:
+    st4 = Store(Path(tmp) / "intern.db")
+    st4.board_ok("greenhouse:acme")
+    st4.record(p("Backend Engineer", ext="20", loc="New York, NY"), "swe", (2, 4), 90, False)
+    st4.record(p("Backend Engineer Intern", ext="21", loc="New York, NY"), "swe", (2, 4), 90, False)
+    check("skip_interns drops the internship",
+          [a["title"] for a in st4.pending_alerts(70, {"greenhouse:acme"}, skip_interns=True)],
+          ["Backend Engineer"])
+    check("both gates together still work",
+          len(st4.pending_alerts(70, {"greenhouse:acme"}, us_only=True, skip_interns=True)), 1)
+    check("neither gate keeps both",
+          len(st4.pending_alerts(70, {"greenhouse:acme"})), 2)
+    st4.commit()
+    out4 = Path(tmp) / "intern.json"
+    st4.export(out4, min_score=40)
+    import json as _j
+    rows = _j.loads(out4.read_text())["jobs"]
+    check("intern flag exported", sorted(j["intern"] for j in rows), [False, True])
 
 print(f"\n{ok} passed, {fail} failed")
 sys.exit(1 if fail else 0)

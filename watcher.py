@@ -195,6 +195,7 @@ def cmd_run(cfg, companies, args) -> int:
         cfg["match"]["min_score_notify"],
         notify_boards,
         cfg["match"].get("us_only", False),
+        cfg["match"].get("exclude_interns", False),
     )
     store.clear_alert_backlog()
     if notify.send(alerts, cfg["telegram"]["max_per_message"]):
@@ -207,6 +208,7 @@ def cmd_run(cfg, companies, args) -> int:
         cfg["match"]["min_score_dashboard"],
         cfg["run"]["dashboard_days"],
         cfg["run"].get("max_live_days", 0),
+        ROOT / "sponsors.json",
     )
 
     print(

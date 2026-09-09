@@ -9,7 +9,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from jobwatch import geo
+from jobwatch import geo, roles
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS boards (
@@ -151,7 +151,8 @@ class Store:
         return cur.rowcount
 
     def pending_alerts(self, min_score: int, boards: set[str],
-                       us_only: bool = False) -> list[sqlite3.Row]:
+                       us_only: bool = False,
+                       skip_interns: bool = False) -> list[sqlite3.Row]:
         rows = self.db.execute(
             "SELECT * FROM jobs WHERE notified=0 AND status='open' AND score>=?"
             " ORDER BY score DESC",
@@ -160,6 +161,8 @@ class Store:
         rows = [r for r in rows if r["board"] in boards]
         if us_only:
             rows = [r for r in rows if geo.is_us(r["location"])]
+        if skip_interns:
+            rows = [r for r in rows if not roles.is_intern(r["title"])]
         return rows
 
     def mark_notified(self, uids: list[str]) -> None:
@@ -175,8 +178,16 @@ class Store:
     # --------------------------------------------------------------- outputs
 
     def export(self, path: str | Path, min_score: int, keep_days: int = 45,
-               max_live_days: int = 0) -> int:
+               max_live_days: int = 0, sponsors_path: str | Path | None = None) -> int:
         now = time.time()
+        # H-1B approvals per company, if tools/sponsors.py has been run.
+        # Absent file means "unknown", which the dashboard shows as a blank, not a no.
+        sponsors: dict = {}
+        if sponsors_path and Path(sponsors_path).exists():
+            try:
+                sponsors = json.loads(Path(sponsors_path).read_text()).get("companies", {})
+            except (OSError, ValueError):
+                sponsors = {}
         rows = self.db.execute(
             "SELECT * FROM jobs WHERE status='open' AND score>=? AND first_seen > ?"
             " ORDER BY first_seen DESC",
@@ -205,6 +216,9 @@ class Store:
                 "liveDays": live_days,
                 "over": bool(r["over_ceiling"]),
                 "us": geo.is_us(r["location"]),
+                "intern": roles.is_intern(r["title"]),
+                "h1b": (sponsors.get(r["board"].partition(":")[2], {}).get("approvals")
+                        if sponsors else None),
             })
         companies = sorted({j["company"] for j in jobs})
         payload = {

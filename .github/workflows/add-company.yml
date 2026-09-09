@@ -1,0 +1,83 @@
+name: add company
+
+# Adds a company to companies.txt from a careers-page or job-posting link,
+# without opening a terminal. Actions tab -> "add company" -> Run workflow.
+#
+# watcher.py add does the real work: it works out the ATS and board token from
+# the URL, checks the board actually answers, refuses duplicates, and appends a
+# correctly formatted line. If the token cannot be resolved this job fails and
+# nothing is committed, which is the point.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Careers page or a link to any single job posting"
+        required: true
+      tier:
+        description: "1 = watchlist, swept hourly · 2 = every 6h · 3 = daily"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "2"
+      notify:
+        description: "Telegram alerts for this company?"
+        type: choice
+        options: ["silent", "notify"]
+        default: "silent"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-watch          # never run while a sweep is mid-commit
+  cancel-in-progress: false
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Only httpx: `add` never scores anything, so the torch install is wasted here.
+      - name: Install
+        run: pip install "httpx>=0.27"
+
+      - name: Add it
+        id: add
+        run: |
+          before=$(wc -l < companies.txt)
+          python watcher.py add "${{ inputs.url }}" \
+            --tier ${{ inputs.tier }} \
+            ${{ inputs.notify == 'notify' && '--notify' || '' }} | tee out.txt
+          after=$(wc -l < companies.txt)
+          if [ "$before" = "$after" ]; then
+            echo "::error::Nothing was added. Either the board is already on your list, or the"
+            echo "::error::token could not be resolved from that URL. Open the careers page, copy"
+            echo "::error::the link to a single job posting, and try again with that."
+            exit 1
+          fi
+
+      - name: Commit
+        run: |
+          git config user.name  "job-watcher"
+          git config user.email "actions@users.noreply.github.com"
+          git add companies.txt
+          git commit -m "add company from ${{ inputs.url }} (tier ${{ inputs.tier }}, ${{ inputs.notify }})"
+          git push
+
+      - name: Summary
+        run: |
+          {
+            echo "### Added"
+            echo '```'
+            grep -v '^#' companies.txt | grep -v '^[[:space:]]*$' | tail -3
+            echo '```'
+            echo "The next sweep records this board's jobs quietly so you are not flooded."
+            echo "Alerts from it start on the sweep after that."
+          } >> $GITHUB_STEP_SUMMARY

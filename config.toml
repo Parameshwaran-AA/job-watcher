@@ -40,6 +40,9 @@ us_only             = true   # only alert on jobs that could be in the US.
                              # A blank or unreadable location counts as US, on the
                              # grounds that an unfilled field is usually an oversight.
                              # The dashboard has its own toggle, independent of this.
+exclude_interns     = true   # never alert on internships, co-ops or apprenticeships.
+                             # Title-based and deliberately narrow: "New Grad" and
+                             # "Early Career" are real jobs and are NOT excluded.
 
 [run]
 database        = "jobs.db"

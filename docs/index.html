@@ -47,6 +47,36 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
   display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule);
   border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
 .menu[hidden]{display:none}
+.bar{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.bar button{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--rule);border-radius:6px;padding:6px 11px;cursor:pointer}
+.bar button:hover{border-color:var(--bar)}
+.bar button.on{border-color:var(--signal);color:var(--signal)}
+.bar .sep{flex:1}
+.modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55)}
+.modal[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:12px;
+  width:min(430px,calc(100vw - 40px));padding:22px 24px;box-shadow:0 18px 50px rgba(0,0,0,.4)}
+.card h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+.card .jt{font-size:15px;color:var(--ink);line-height:1.35;margin-bottom:4px}
+.card .jc{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+.card .acts{display:flex;gap:9px}
+.card .acts button{flex:1;font-family:var(--sans);font-size:13px;padding:9px;border-radius:7px;
+  cursor:pointer;border:1px solid var(--rule);background:var(--ground);color:var(--ink)}
+.card .acts button.primary{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:600}
+.panel{border:1px solid var(--rule);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.panel[hidden]{display:none}
+.panel .ph{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--rule);
+  font-size:12.5px;color:var(--muted)}
+.panel .ph .sep{flex:1}
+.panel .pr{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:var(--ink);
+  border-bottom:1px solid var(--rule)}
+.panel .pr:last-child{border-bottom:none}
+.panel .pr .when{font-family:var(--mono);font-size:11px;color:var(--faint);flex:none;width:78px}
+.panel .pr .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel .pr button{font-family:var(--sans);font-size:11.5px;color:var(--muted);background:none;
+  border:1px solid var(--rule);border-radius:5px;padding:3px 8px;cursor:pointer;flex:none}
 .menu-head{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--rule)}
 .menu-head button{flex:1;font-family:var(--sans);font-size:12.5px;color:var(--ink);
   background:var(--ground);border:1px solid var(--rule);border-radius:5px;padding:5px;cursor:pointer}
@@ -64,6 +94,11 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
      font-size:12.5px;color:var(--muted);cursor:pointer}
 .chk input{width:14px;height:14px;padding:0;accent-color:var(--bar);cursor:pointer}
 .over{color:var(--faint);font-size:12px;margin-left:7px;font-style:italic}
+.h1b{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.02em;padding:1px 6px;border-radius:4px;margin-left:8px;
+  border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.h1b.yes{border-color:#1f6f4a;color:#4bbd8a}
+.h1b.no{border-color:var(--rule);color:var(--faint)}
 .count{font-family:var(--mono);font-size:12px;color:var(--faint);padding:10px 0 2px}
 
 .row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;
@@ -128,6 +163,24 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
     </select>
   </div>
   <div class="ctl">
+    <label for="jobtype">Type</label>
+    <select id="jobtype">
+      <option value="job">Full-time</option>
+      <option value="intern">Internships</option>
+      <option value="all">Both</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label for="live">Live</label>
+    <select id="live">
+      <option value="0">Any age</option>
+      <option value="7">Under 7 days</option>
+      <option value="14">Under 14 days</option>
+      <option value="30">Under 30 days</option>
+      <option value="60">Under 60 days</option>
+    </select>
+  </div>
+  <div class="ctl">
     <label for="since">Found</label>
     <select id="since">
       <option value="0">Any time</option>
@@ -153,6 +206,10 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
     <input type="checkbox" id="usOnly" checked>
     <span>US only</span>
   </label>
+  <label class="ctl chk" for="h1bOnly">
+    <input type="checkbox" id="h1bOnly">
+    <span>Sponsors H-1B</span>
+  </label>
   <label class="ctl chk" for="over">
     <input type="checkbox" id="over">
     <span>Include 8+ yr roles</span>
@@ -160,14 +217,58 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
   <button class="reset" id="reset">Clear</button>
 </div>
 
+<div class="bar">
+  <button type="button" id="appliedBtn">Applied (0)</button>
+  <button type="button" id="exportBtn">Download CSV</button>
+  <button type="button" id="importBtn">Import CSV</button>
+  <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+  <span class="sep"></span>
+  <button type="button" id="addCoBtn">Add a company</button>
+</div>
+
+<div class="panel" id="appliedPanel" hidden>
+  <div class="ph"><span id="appliedHead">Applied</span><span class="sep"></span>
+    <button type="button" id="closeApplied" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12.5px">close</button>
+  </div>
+  <div id="appliedList"></div>
+</div>
+
 <p class="count" id="count"></p>
 <div id="list"></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="card">
+    <h3 id="modalHead">Did you apply?</h3>
+    <div class="jt" id="modalTitle"></div>
+    <div class="jc" id="modalCo"></div>
+    <div class="acts">
+      <button type="button" id="mNo">Not yet</button>
+      <button type="button" class="primary" id="mYes">Yes, applied</button>
+    </div>
+  </div>
+</div>
 
 </div>
 <script>
 const $ = id => document.getElementById(id);
 let DATA = {jobs: [], companies: [], generated: 0};
 let SELECTED = new Set();   // empty = all companies
+
+// ---- applied jobs -------------------------------------------------------
+// Kept in this browser. The Download CSV button is how it leaves; commit that
+// file to the repo yourself if you want it on every machine. The page itself
+// never writes to GitHub, so no token ever has to live in this public page.
+const STORE = "jobwatch.applied.v1";
+let APPLIED = {};
+try { APPLIED = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { APPLIED = {}; }
+const nApplied = () => Object.keys(APPLIED).length;
+function saveApplied(){
+  try { localStorage.setItem(STORE, JSON.stringify(APPLIED)); } catch (e) {
+    alert("This browser is blocking local storage, so the applied list cannot be saved. "
+        + "Private windows usually cause this.");
+  }
+  $("appliedBtn").textContent = "Applied (" + nApplied() + ")";
+}
 
 const ago = s => {
   const h = (Date.now()/1000 - s) / 3600;
@@ -187,7 +288,10 @@ function state(){
     sort: $("sort").value,
     min: +$("score").value,
     over: $("over").checked,
-    us: $("usOnly").checked
+    us: $("usOnly").checked,
+    type: $("jobtype").value,
+    live: +$("live").value,
+    h1b: $("h1bOnly").checked
   };
 }
 
@@ -200,6 +304,11 @@ function render(){
     if (j.score < s.min) return false;
     if (j.over && !s.over) return false;
     if (s.us && j.us === false) return false;
+    if (APPLIED[j.id]) return false;
+    if (s.type === "job" && j.intern === true) return false;
+    if (s.type === "intern" && j.intern !== true) return false;
+    if (s.live && j.liveDays > s.live) return false;
+    if (s.h1b && j.h1b === 0) return false;
     if (s.fam !== "all" && j.family !== s.fam) return false;
     if (s.since && (now - j.found) > s.since * 3600) return false;
     if (SELECTED.size && !SELECTED.has(j.company)) return false;
@@ -218,7 +327,9 @@ function render(){
     rows.length + " of " + DATA.jobs.length + " roles"
     + (SELECTED.size ? " \u00b7 " + SELECTED.size + " compan" + (SELECTED.size === 1 ? "y" : "ies") : "")
     + (!s.over && hidden ? " \u00b7 " + hidden + " hidden as 8+ yrs" : "")
-    + (s.us && nonUs ? " \u00b7 " + nonUs + " hidden as non-US" : "");
+    + (s.us && nonUs ? " \u00b7 " + nonUs + " hidden as non-US" : "")
+    + (nApplied() ? " \u00b7 " + nApplied() + " hidden as applied" : "")
+    + (s.h1b ? " \u00b7 sponsors only" : "");
 
   if (!rows.length){
     $("list").innerHTML = '<p class="empty">Nothing matches. Lower the match threshold, '
@@ -230,16 +341,22 @@ function render(){
   $("list").innerHTML = rows.map(j => {
     const fresh = (now - j.found) < 86400 ? '<span class="new">new</span>' : '';
     const over = j.over ? '<span class="over">asks 8+ yrs</span>' : '';
+    const h1b = j.h1b === null || j.h1b === undefined ? ''
+      : j.h1b > 0 ? '<span class="h1b yes" title="H-1B petitions approved for this employer, '
+          + 'per the USCIS Employer Data Hub">H-1B ' + j.h1b.toLocaleString() + '</span>'
+      : '<span class="h1b no" title="No approved H-1B petitions found under this employer name '
+          + 'in the USCIS data. Could also be a name-matching miss.">no H-1B record</span>';
     return '<div class="row">'
       + '<div><a class="title" href="' + esc(j.url) + '" target="_blank" rel="noopener">'
       + fresh + esc(j.title) + '</a>'
       + '<p class="sub"><button class="co" data-co="' + esc(j.company) + '">' + esc(j.company) + '</button>'
       + (j.location ? ' &middot; ' + esc(j.location) : '')
-      + ' &middot; ' + expText(j) + '</p></div>'
+      + ' &middot; ' + expText(j) + h1b + '</p></div>'
       + '<div class="num">' + ago(j.found) + '<br>live ' + j.liveDays + 'd</div>'
       + '<div class="right"><div><div class="sc">' + j.score + '</div>'
       + '<div class="gauge"><i style="width:' + j.score + '%"></i></div></div>'
-      + '<a class="apply" href="' + esc(j.url) + '" target="_blank" rel="noopener">Apply</a></div>'
+      + '<a class="apply" href="' + esc(j.url) + '" target="_blank" rel="noopener" data-ask="'
+      + esc(j.id) + '">Apply</a></div>'
       + '</div>';
   }).join("");
 }
@@ -252,7 +369,7 @@ $("list").addEventListener("click", e => {
   syncMenu(); updateBtnLabel(); render();
 });
 
-["family","since","sort","score","over","usOnly"].forEach(id =>
+["family","since","sort","score","over","usOnly","jobtype","live","h1bOnly"].forEach(id =>
   $(id).addEventListener("input", render));
 
 $("reset").addEventListener("click", () => {
@@ -260,6 +377,7 @@ $("reset").addEventListener("click", () => {
   $("family").value = "all"; $("since").value = "0";
   $("sort").value = "found"; $("score").value = 45; $("over").checked = false;
   $("usOnly").checked = true;
+  $("jobtype").value = "job"; $("live").value = "0"; $("h1bOnly").checked = false;
   syncMenu(); updateBtnLabel(); render();
 });
 
@@ -305,6 +423,146 @@ document.addEventListener("click", e => {
     $("menu").hidden = true; $("multiBtn").setAttribute("aria-expanded", "false");
   }
 });
+
+// ---- did-you-apply prompt ----
+let PENDING = null;
+function ask(job){
+  PENDING = job;
+  $("modalTitle").textContent = job.title;
+  $("modalCo").textContent = job.company + (job.location ? " \u00b7 " + job.location : "");
+  $("modal").hidden = false;
+}
+$("mNo").addEventListener("click", () => { PENDING = null; $("modal").hidden = true; });
+$("mYes").addEventListener("click", () => {
+  if (PENDING){
+    APPLIED[PENDING.id] = {
+      date: new Date().toISOString().slice(0,10),
+      company: PENDING.company, title: PENDING.title,
+      location: PENDING.location || "", score: PENDING.score,
+      url: PENDING.url, liveDays: PENDING.liveDays
+    };
+    saveApplied();
+  }
+  PENDING = null; $("modal").hidden = true; render();
+});
+$("modal").addEventListener("click", e => {
+  if (e.target === $("modal")){ PENDING = null; $("modal").hidden = true; }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("modal").hidden){ PENDING = null; $("modal").hidden = true; }
+});
+
+// Apply opens the posting in a new tab; the prompt waits here for your answer.
+$("list").addEventListener("click", e => {
+  const a = e.target.closest("a[data-ask]");
+  if (!a) return;
+  const job = DATA.jobs.find(j => String(j.id) === a.dataset.ask);
+  if (job) setTimeout(() => ask(job), 350);
+});
+
+// ---- applied panel ----
+function renderApplied(){
+  const ids = Object.keys(APPLIED)
+    .sort((a,b) => (APPLIED[b].date || "").localeCompare(APPLIED[a].date || ""));
+  $("appliedHead").textContent = ids.length
+    ? ids.length + " application" + (ids.length === 1 ? "" : "s") + " logged"
+    : "Nothing logged yet";
+  const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  $("appliedList").innerHTML = ids.map(id => {
+    const a = APPLIED[id];
+    return '<div class="pr"><span class="when">' + esc(a.date) + '</span>'
+      + '<span class="grow"><a class="title" href="' + esc(a.url) + '" target="_blank" rel="noopener">'
+      + esc(a.title) + '</a> &middot; ' + esc(a.company) + '</span>'
+      + '<button data-undo="' + esc(id) + '">undo</button></div>';
+  }).join("") || '<div class="pr" style="color:var(--muted)">Mark a job as applied and it lands here.</div>';
+}
+$("appliedList").addEventListener("click", e => {
+  const b = e.target.closest("button[data-undo]");
+  if (!b) return;
+  delete APPLIED[b.dataset.undo];
+  saveApplied(); renderApplied(); render();
+});
+$("appliedBtn").addEventListener("click", () => {
+  const open = $("appliedPanel").hidden;
+  $("appliedPanel").hidden = !open;
+  $("appliedBtn").classList.toggle("on", open);
+  if (open) renderApplied();
+});
+$("closeApplied").addEventListener("click", () => {
+  $("appliedPanel").hidden = true; $("appliedBtn").classList.remove("on");
+});
+
+// ---- one CSV, one row per application ----
+const csvCell = v => {
+  const t = String(v ?? "");
+  return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+};
+$("exportBtn").addEventListener("click", () => {
+  const ids = Object.keys(APPLIED).sort((a,b) => (APPLIED[a].date||"").localeCompare(APPLIED[b].date||""));
+  if (!ids.length){ alert("Nothing to export yet."); return; }
+  const head = ["date_applied","company","title","location","score","live_days","url","job_id"];
+  const rows = ids.map(id => {
+    const a = APPLIED[id];
+    return [a.date, a.company, a.title, a.location, a.score, a.liveDays, a.url, id].map(csvCell).join(",");
+  });
+  const blob = new Blob([head.join(",") + "\n" + rows.join("\n") + "\n"], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "applications.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+
+// ---- import merges, never replaces ----
+function parseCsv(text){
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"' && text[i+1] === '"'){ cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ","){ row.push(cell); cell = ""; }
+    else if (c === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell.length || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.length > 1);
+}
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const rows = parseCsv(String(rd.result));
+    const head = rows.shift() || [];
+    const ix = n => head.indexOf(n);
+    let added = 0;
+    rows.forEach(r => {
+      const id = r[ix("job_id")];
+      if (!id || APPLIED[id]) return;
+      APPLIED[id] = { date: r[ix("date_applied")], company: r[ix("company")],
+        title: r[ix("title")], location: r[ix("location")],
+        score: +r[ix("score")] || 0, liveDays: +r[ix("live_days")] || 0, url: r[ix("url")] };
+      added++;
+    });
+    saveApplied(); renderApplied(); render();
+    alert("Imported " + added + " new row" + (added === 1 ? "" : "s") + ". "
+        + nApplied() + " application" + (nApplied() === 1 ? "" : "s") + " logged in total.");
+  };
+  rd.readAsText(f);
+  e.target.value = "";
+});
+
+// ---- add a company ----
+$("addCoBtn").addEventListener("click", () => {
+  window.open("https://github.com/Parameshwaran-AA/job-watcher/actions/workflows/add-company.yml",
+              "_blank", "noopener");
+});
+
+saveApplied();
 
 fetch("jobs.json?t=" + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
