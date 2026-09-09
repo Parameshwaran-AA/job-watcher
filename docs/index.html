@@ -103,6 +103,12 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
 .ref{font-family:var(--sans);font-size:11.5px;color:var(--muted);text-decoration:none;
   border:1px solid var(--rule);border-radius:5px;padding:2px 7px;margin-left:8px;white-space:nowrap}
 .ref:hover{border-color:var(--bar);color:var(--ink)}
+button.ref{font-family:var(--sans);background:none;cursor:pointer;line-height:1.35}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;
+  background:var(--panel);border:1px solid var(--rule);border-radius:8px;
+  padding:11px 16px;font-size:13px;color:var(--ink);max-width:520px;
+  box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.toast[hidden]{display:none}
 .card select{width:100%;font-family:var(--sans);font-size:13px;padding:8px 9px;border-radius:7px;
   border:1px solid var(--rule);background:var(--ground);color:var(--ink);margin-bottom:14px}
 .panel .pr .stage{font-family:var(--sans);font-size:11px;padding:2px 7px;border-radius:4px;
@@ -252,6 +258,8 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
 <p class="count" id="count"></p>
 <div id="list"></div>
 
+<div class="toast" id="toast" hidden></div>
+
 <div class="modal" id="modal" hidden>
   <div class="card">
     <h3 id="modalHead">Did you apply?</h3>
@@ -266,6 +274,7 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
       <option value="rejected">Rejected</option>
     </select>
     <div class="acts">
+      <button type="button" id="mLetter">Copy letter prompt</button>
       <button type="button" id="mNo">Not yet</button>
       <button type="button" class="primary" id="mYes">Yes, applied</button>
     </div>
@@ -286,6 +295,12 @@ const STORE = "jobwatch.applied.v1";
 let APPLIED = {};
 try { APPLIED = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { APPLIED = {}; }
 const nApplied = () => Object.keys(APPLIED).length;
+
+// Mirror of jobwatch/roles.py. \bintern\b cannot match "internal" or
+// "international": the closing boundary fails on the following letter.
+const INTERN_RE = /\b(?:interns?|interning|internships?|co-?ops?|apprentice(?:ship)?|trainee)\b/i;
+const isIntern = j => j.intern === undefined || j.intern === null
+  ? INTERN_RE.test(j.title || "") : j.intern === true;
 let CLOSED = {};   // job id -> {closed: epoch}, filled from jobs.json
 function saveApplied(){
   try { localStorage.setItem(STORE, JSON.stringify(APPLIED)); } catch (e) {
@@ -331,8 +346,8 @@ function render(){
     if (j.over && !s.over) return false;
     if (s.us && j.us === false) return false;
     if (APPLIED[j.id]) return false;
-    if (s.type === "job" && j.intern === true) return false;
-    if (s.type === "intern" && j.intern !== true) return false;
+    if (s.type === "job" && isIntern(j)) return false;
+    if (s.type === "intern" && !isIntern(j)) return false;
     if (s.live && j.liveDays > s.live) return false;
     if (s.h1b && j.h1b === 0) return false;
     if (s.cap && !j.capExempt) return false;
@@ -377,9 +392,20 @@ function render(){
     const cap = j.capExempt
       ? '<span class="h1b cap" title="Cap-exempt employer: no H-1B lottery, can file any time of year">cap-exempt</span>'
       : '';
-    const ref = '<a class="ref" target="_blank" rel="noopener" title="Find engineers here to talk to before you apply"'
-      + ' href="https://www.linkedin.com/search/results/people/?keywords='
-      + encodeURIComponent(j.company + ' software engineer') + '">who works here</a>';
+    // Search, not connect. Aim it at people who do this job, then at people who
+    // share your school, which is the highest-converting cold approach there is.
+    const ROLE = {ai: "machine learning engineer", data: "data engineer", swe: "software engineer"};
+    const li = q => 'https://www.linkedin.com/search/results/people/?keywords='
+      + encodeURIComponent(q) + '&origin=GLOBAL_SEARCH_HEADER';
+    const ref = '<a class="ref" target="_blank" rel="noopener"'
+      + ' title="LinkedIn people search for engineers doing this job here"'
+      + ' href="' + li(j.company + ' ' + (ROLE[j.family] || 'software engineer')) + '">who works here</a>'
+      + '<a class="ref" target="_blank" rel="noopener"'
+      + ' title="People at this company who mention University at Buffalo. Shared school is the'
+      + ' warmest cold approach available."'
+      + ' href="' + li(j.company + ' University at Buffalo') + '">alumni</a>'
+      + '<button class="ref" data-letter="' + esc(j.id) + '"'
+      + ' title="Copy a ready-to-paste prompt so Claude can draft a tailored note for this job">letter</button>';
     return '<div class="row">'
       + '<div><a class="title" href="' + esc(j.url) + '" target="_blank" rel="noopener">'
       + fresh + esc(j.title) + '</a>'
@@ -502,6 +528,50 @@ $("list").addEventListener("click", e => {
   const job = DATA.jobs.find(j => String(j.id) === a.dataset.ask);
   if (job) setTimeout(() => ask(job), 350);
 });
+
+// ---- cover letter prompt -----------------------------------------------
+// The dashboard cannot read the job description (the ATS blocks cross-origin
+// requests) and it should not: storing 1,900 descriptions would bloat the repo.
+// So this hands Claude the URL and lets Claude fetch the posting itself.
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { t.hidden = true; }, 4200);
+}
+function letterPrompt(j){
+  return "Draft a short application note for this job.\n\n"
+    + "Role: " + j.title + "\n"
+    + "Company: " + j.company + "\n"
+    + (j.location ? "Location: " + j.location + "\n" : "")
+    + "Posting: " + j.url + "\n\n"
+    + "Fetch that posting and read the actual requirements. Use my resume from the "
+    + "project doc claude/resume.md. Four to six sentences, not a formal letter: "
+    + "open with the single most relevant thing I have built for this specific role, "
+    + "give one concrete number, name the one requirement I am weakest on and how I "
+    + "would close it, and end plainly. My voice, no filler, no 'I am excited to apply'. "
+    + "I am on F-1 OPT and will need sponsorship, so do not claim otherwise.";
+}
+async function copyPrompt(j){
+  const text = letterPrompt(j);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e2) { /* nothing else to try */ }
+    ta.remove();
+  }
+  toast("Prompt copied. Paste it to Claude and it will read the posting and draft the note.");
+}
+$("list").addEventListener("click", e => {
+  const b = e.target.closest("button[data-letter]");
+  if (!b) return;
+  const j = DATA.jobs.find(x => String(x.id) === b.dataset.letter);
+  if (j) copyPrompt(j);
+});
+$("mLetter").addEventListener("click", () => { if (PENDING) copyPrompt(PENDING); });
 
 // ---- applied panel ----
 function renderApplied(){
