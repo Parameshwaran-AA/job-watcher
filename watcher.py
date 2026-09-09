@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import threading
 import time
@@ -209,6 +210,7 @@ def cmd_run(cfg, companies, args) -> int:
         cfg["run"]["dashboard_days"],
         cfg["run"].get("max_live_days", 0),
         ROOT / "sponsors.json",
+        set(cfg["match"].get("cap_exempt", [])),
     )
 
     print(
@@ -274,6 +276,61 @@ def cmd_add(cfg, companies, args) -> int:
     return 0
 
 
+def cmd_corpus(cfg, companies, args) -> int:
+    """Dump the job descriptions we already fetch, so they can be analysed offline.
+
+    Every sweep downloads the full text of every posting, scores it and throws the
+    text away. Keeping it permanently would bloat the repo (roughly a gigabyte a
+    year once committed 29 times a day), so this writes it once to a local file
+    that .gitignore excludes. Use it to work out which skills recur in the jobs
+    that match you best and are missing from your profile.
+    """
+    scorer = match.get_scorer(cfg["profile"]["text"], cfg["match"]["use_embeddings"])
+    families = set(cfg["match"]["role_families"])
+    picked = [c for c in companies if not args.tier or c["tier"] in args.tier]
+    throttle = Throttle(cfg["run"]["per_host_delay_ms"])
+    out: list[dict] = []
+
+    with httpx.Client(timeout=cfg["run"]["request_timeout"], follow_redirects=True) as client:
+        with ThreadPoolExecutor(max_workers=cfg["run"]["concurrency"]) as pool:
+            results = pool.map(
+                lambda c: (c, *fetch_board(c["code"], client, throttle)), picked
+            )
+            for company, postings, err in results:
+                if postings is None:
+                    print(f"  {company['code']:26} skipped ({err})")
+                    continue
+                keep = [
+                    pst for pst in postings[: cfg["run"]["max_jobs_per_company"]]
+                    if match.title_family(pst.title) in families
+                    and not match.TOO_SENIOR.search(pst.title)
+                ]
+                if not keep:
+                    print(f"  {company['code']:26}    0")
+                    continue
+                scores = scorer.score([f"{p.title}\n{p.description}" for p in keep])
+                n = 0
+                for pst, sc in zip(keep, scores):
+                    if sc < args.min_score:
+                        continue
+                    out.append({"company": pst.company, "title": pst.title,
+                                "location": pst.location, "url": pst.url,
+                                "score": sc, "description": pst.description})
+                    n += 1
+                print(f"  {company['code']:26} {n:4} kept of {len(keep)}")
+
+    out.sort(key=lambda o: -o["score"])
+    path = ROOT / args.out
+    path.write_text(json.dumps(out, indent=1))
+    chars = sum(len(o["description"]) for o in out)
+    print(f"\nWrote {len(out)} descriptions to {path.name} ({chars/1_000_000:.1f} MB of text).")
+    print("Gitignored on purpose: keeping this in the repo would cost about a")
+    print("gigabyte a year once the sweep commits it 29 times a day.")
+    print("Hand it to Claude and ask which skills recur in the top-scoring jobs")
+    print("but are missing from your profile.")
+    return 0
+
+
 def cmd_stats(cfg, companies, args) -> int:
     store = Store(ROOT / cfg["run"]["database"])
     print("score distribution across everything kept:\n")
@@ -320,6 +377,10 @@ def main() -> int:
     add.add_argument("--tier", type=int, default=2, choices=[1, 2, 3])
     add.add_argument("--notify", action="store_true", help="put it on the Telegram watchlist")
     sub.add_parser("verify", help="check every board token responds")
+    cor = sub.add_parser("corpus", help="dump job descriptions locally for gap analysis")
+    cor.add_argument("--tier", type=int, nargs="*", help="only these tiers")
+    cor.add_argument("--min-score", type=int, default=50, dest="min_score")
+    cor.add_argument("--out", default="corpus.json")
     sub.add_parser("stats", help="score histogram for tuning")
     rej = sub.add_parser("rejects", help="audit what got filtered out")
     rej.add_argument("--grep", help="show rejected titles containing this")
@@ -329,7 +390,7 @@ def main() -> int:
     companies = load_companies(ROOT / args.companies)
 
     fn = {"run": cmd_run, "add": cmd_add, "verify": cmd_verify,
-          "stats": cmd_stats, "rejects": cmd_rejects}[args.cmd]
+          "stats": cmd_stats, "rejects": cmd_rejects, "corpus": cmd_corpus}[args.cmd]
     return fn(cfg, companies, args)
 
 

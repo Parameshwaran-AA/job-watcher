@@ -44,6 +44,13 @@ exclude_interns     = true   # never alert on internships, co-ops or apprentices
                              # Title-based and deliberately narrow: "New Grad" and
                              # "Early Career" are real jobs and are NOT excluded.
 
+# Board codes that are H-1B cap-exempt: universities, their affiliated nonprofits,
+# nonprofit research organisations, government research labs. No lottery, they can
+# file any time of year. Worth its own filter on the dashboard.
+cap_exempt = [
+  # "greenhouse:example-university",
+]
+
 [run]
 database        = "jobs.db"
 export_path     = "docs/jobs.json"

@@ -99,6 +99,18 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
   border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
 .h1b.yes{border-color:#1f6f4a;color:#4bbd8a}
 .h1b.no{border-color:var(--rule);color:var(--faint)}
+.h1b.cap{border-color:#5b4a9c;color:#a394f0}
+.ref{font-family:var(--sans);font-size:11.5px;color:var(--muted);text-decoration:none;
+  border:1px solid var(--rule);border-radius:5px;padding:2px 7px;margin-left:8px;white-space:nowrap}
+.ref:hover{border-color:var(--bar);color:var(--ink)}
+.card select{width:100%;font-family:var(--sans);font-size:13px;padding:8px 9px;border-radius:7px;
+  border:1px solid var(--rule);background:var(--ground);color:var(--ink);margin-bottom:14px}
+.panel .pr .stage{font-family:var(--sans);font-size:11px;padding:2px 7px;border-radius:4px;
+  border:1px solid var(--rule);color:var(--muted);flex:none}
+.panel .pr .stage.reply{border-color:#1f6f4a;color:#4bbd8a}
+.panel .pr .stage.dead{border-color:#7a3536;color:#e07a7a}
+.panel .pr .age{font-family:var(--mono);font-size:11px;color:var(--faint);flex:none;width:104px;text-align:right}
+.panel .pr.stale .grow{opacity:.5}
 .count{font-family:var(--mono);font-size:12px;color:var(--faint);padding:10px 0 2px}
 
 .row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;
@@ -206,6 +218,10 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
     <input type="checkbox" id="usOnly" checked>
     <span>US only</span>
   </label>
+  <label class="ctl chk" for="capOnly">
+    <input type="checkbox" id="capOnly">
+    <span>Cap-exempt</span>
+  </label>
   <label class="ctl chk" for="h1bOnly">
     <input type="checkbox" id="h1bOnly">
     <span>Sponsors H-1B</span>
@@ -241,6 +257,14 @@ input:focus-visible,select:focus-visible,a:focus-visible,button:focus-visible{
     <h3 id="modalHead">Did you apply?</h3>
     <div class="jt" id="modalTitle"></div>
     <div class="jc" id="modalCo"></div>
+    <select id="modalStage">
+      <option value="applied">Applied</option>
+      <option value="replied">Recruiter replied</option>
+      <option value="screen">Phone screen</option>
+      <option value="onsite">Onsite / final</option>
+      <option value="offer">Offer</option>
+      <option value="rejected">Rejected</option>
+    </select>
     <div class="acts">
       <button type="button" id="mNo">Not yet</button>
       <button type="button" class="primary" id="mYes">Yes, applied</button>
@@ -262,6 +286,7 @@ const STORE = "jobwatch.applied.v1";
 let APPLIED = {};
 try { APPLIED = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { APPLIED = {}; }
 const nApplied = () => Object.keys(APPLIED).length;
+let CLOSED = {};   // job id -> {closed: epoch}, filled from jobs.json
 function saveApplied(){
   try { localStorage.setItem(STORE, JSON.stringify(APPLIED)); } catch (e) {
     alert("This browser is blocking local storage, so the applied list cannot be saved. "
@@ -291,7 +316,8 @@ function state(){
     us: $("usOnly").checked,
     type: $("jobtype").value,
     live: +$("live").value,
-    h1b: $("h1bOnly").checked
+    h1b: $("h1bOnly").checked,
+    cap: $("capOnly").checked
   };
 }
 
@@ -309,6 +335,7 @@ function render(){
     if (s.type === "intern" && j.intern !== true) return false;
     if (s.live && j.liveDays > s.live) return false;
     if (s.h1b && j.h1b === 0) return false;
+    if (s.cap && !j.capExempt) return false;
     if (s.fam !== "all" && j.family !== s.fam) return false;
     if (s.since && (now - j.found) > s.since * 3600) return false;
     if (SELECTED.size && !SELECTED.has(j.company)) return false;
@@ -329,7 +356,8 @@ function render(){
     + (!s.over && hidden ? " \u00b7 " + hidden + " hidden as 8+ yrs" : "")
     + (s.us && nonUs ? " \u00b7 " + nonUs + " hidden as non-US" : "")
     + (nApplied() ? " \u00b7 " + nApplied() + " hidden as applied" : "")
-    + (s.h1b ? " \u00b7 sponsors only" : "");
+    + (s.h1b ? " \u00b7 sponsors only" : "")
+    + (s.cap ? " \u00b7 cap-exempt only" : "");
 
   if (!rows.length){
     $("list").innerHTML = '<p class="empty">Nothing matches. Lower the match threshold, '
@@ -346,12 +374,18 @@ function render(){
           + 'per the USCIS Employer Data Hub">H-1B ' + j.h1b.toLocaleString() + '</span>'
       : '<span class="h1b no" title="No approved H-1B petitions found under this employer name '
           + 'in the USCIS data. Could also be a name-matching miss.">no H-1B record</span>';
+    const cap = j.capExempt
+      ? '<span class="h1b cap" title="Cap-exempt employer: no H-1B lottery, can file any time of year">cap-exempt</span>'
+      : '';
+    const ref = '<a class="ref" target="_blank" rel="noopener" title="Find engineers here to talk to before you apply"'
+      + ' href="https://www.linkedin.com/search/results/people/?keywords='
+      + encodeURIComponent(j.company + ' software engineer') + '">who works here</a>';
     return '<div class="row">'
       + '<div><a class="title" href="' + esc(j.url) + '" target="_blank" rel="noopener">'
       + fresh + esc(j.title) + '</a>'
       + '<p class="sub"><button class="co" data-co="' + esc(j.company) + '">' + esc(j.company) + '</button>'
       + (j.location ? ' &middot; ' + esc(j.location) : '')
-      + ' &middot; ' + expText(j) + h1b + '</p></div>'
+      + ' &middot; ' + expText(j) + h1b + cap + ref + '</p></div>'
       + '<div class="num">' + ago(j.found) + '<br>live ' + j.liveDays + 'd</div>'
       + '<div class="right"><div><div class="sc">' + j.score + '</div>'
       + '<div class="gauge"><i style="width:' + j.score + '%"></i></div></div>'
@@ -369,7 +403,7 @@ $("list").addEventListener("click", e => {
   syncMenu(); updateBtnLabel(); render();
 });
 
-["family","since","sort","score","over","usOnly","jobtype","live","h1bOnly"].forEach(id =>
+["family","since","sort","score","over","usOnly","jobtype","live","h1bOnly","capOnly"].forEach(id =>
   $(id).addEventListener("input", render));
 
 $("reset").addEventListener("click", () => {
@@ -377,7 +411,7 @@ $("reset").addEventListener("click", () => {
   $("family").value = "all"; $("since").value = "0";
   $("sort").value = "found"; $("score").value = 45; $("over").checked = false;
   $("usOnly").checked = true;
-  $("jobtype").value = "job"; $("live").value = "0"; $("h1bOnly").checked = false;
+  $("jobtype").value = "job"; $("live").value = "0"; $("h1bOnly").checked = false; $("capOnly").checked = false;
   syncMenu(); updateBtnLabel(); render();
 });
 
@@ -430,20 +464,29 @@ function ask(job){
   PENDING = job;
   $("modalTitle").textContent = job.title;
   $("modalCo").textContent = job.company + (job.location ? " \u00b7 " + job.location : "");
+  const known = APPLIED[job.id];
+  $("modalHead").textContent = known ? "Update this application" : "Did you apply?";
+  $("modalStage").value = known ? (known.stage || "applied") : "applied";
   $("modal").hidden = false;
 }
 $("mNo").addEventListener("click", () => { PENDING = null; $("modal").hidden = true; });
 $("mYes").addEventListener("click", () => {
   if (PENDING){
+    const prev = APPLIED[PENDING.id] || {};
+    const stage = $("modalStage").value;
     APPLIED[PENDING.id] = {
-      date: new Date().toISOString().slice(0,10),
+      date: prev.date || new Date().toISOString().slice(0,10),
+      stage: stage,
+      stageDate: new Date().toISOString().slice(0,10),
       company: PENDING.company, title: PENDING.title,
       location: PENDING.location || "", score: PENDING.score,
       url: PENDING.url, liveDays: PENDING.liveDays
     };
     saveApplied();
   }
-  PENDING = null; $("modal").hidden = true; render();
+  PENDING = null; $("modal").hidden = true;
+  if (!$("appliedPanel").hidden) renderApplied();
+  render();
 });
 $("modal").addEventListener("click", e => {
   if (e.target === $("modal")){ PENDING = null; $("modal").hidden = true; }
@@ -468,15 +511,43 @@ function renderApplied(){
     ? ids.length + " application" + (ids.length === 1 ? "" : "s") + " logged"
     : "Nothing logged yet";
   const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const LABEL = {applied:"applied", replied:"replied", screen:"screen",
+                 onsite:"onsite", offer:"offer", rejected:"rejected"};
+  const today = Date.now();
   $("appliedList").innerHTML = ids.map(id => {
     const a = APPLIED[id];
-    return '<div class="pr"><span class="when">' + esc(a.date) + '</span>'
+    const stage = a.stage || "applied";
+    const days = Math.floor((today - Date.parse(a.date + "T00:00:00")) / 86400000);
+    const moved = stage !== "applied";
+    const dead = stage === "rejected";
+    // A req that vanished from the board after you applied was filled or pulled.
+    // That is not a verdict on you, and it is the one thing silence cannot tell you.
+    const gone = CLOSED[id];
+    const stale = !moved && days >= 14;
+    const note = gone
+      ? '<span class="age" title="This posting disappeared from the company board. It was '
+        + 'filled or pulled, which is not a verdict on your application.">closed +'
+        + Math.max(0, Math.floor((gone.closed*1000 - Date.parse(a.date + "T00:00:00"))/86400000))
+        + 'd</span>'
+      : '<span class="age">' + (days === 0 ? "today" : days + "d, " + LABEL[stage]) + '</span>';
+    return '<div class="pr' + (stale ? ' stale' : '') + '">'
+      + '<span class="when">' + esc(a.date) + '</span>'
+      + '<span class="stage' + (dead ? ' dead' : moved ? ' reply' : '') + '">' + LABEL[stage] + '</span>'
       + '<span class="grow"><a class="title" href="' + esc(a.url) + '" target="_blank" rel="noopener">'
       + esc(a.title) + '</a> &middot; ' + esc(a.company) + '</span>'
+      + note
+      + '<button data-edit="' + esc(id) + '">edit</button>'
       + '<button data-undo="' + esc(id) + '">undo</button></div>';
   }).join("") || '<div class="pr" style="color:var(--muted)">Mark a job as applied and it lands here.</div>';
 }
 $("appliedList").addEventListener("click", e => {
+  const ed = e.target.closest("button[data-edit]");
+  if (ed){
+    const a = APPLIED[ed.dataset.edit];
+    ask({id: ed.dataset.edit, title: a.title, company: a.company,
+         location: a.location, score: a.score, url: a.url, liveDays: a.liveDays});
+    return;
+  }
   const b = e.target.closest("button[data-undo]");
   if (!b) return;
   delete APPLIED[b.dataset.undo];
@@ -500,10 +571,15 @@ const csvCell = v => {
 $("exportBtn").addEventListener("click", () => {
   const ids = Object.keys(APPLIED).sort((a,b) => (APPLIED[a].date||"").localeCompare(APPLIED[b].date||""));
   if (!ids.length){ alert("Nothing to export yet."); return; }
-  const head = ["date_applied","company","title","location","score","live_days","url","job_id"];
+  const head = ["date_applied","stage","stage_date","days_since_applied","req_closed",
+                "company","title","location","score","live_days","url","job_id"];
+  const now = Date.now();
   const rows = ids.map(id => {
     const a = APPLIED[id];
-    return [a.date, a.company, a.title, a.location, a.score, a.liveDays, a.url, id].map(csvCell).join(",");
+    const days = Math.floor((now - Date.parse(a.date + "T00:00:00")) / 86400000);
+    return [a.date, a.stage || "applied", a.stageDate || a.date, days,
+            CLOSED[id] ? "yes" : "", a.company, a.title, a.location,
+            a.score, a.liveDays, a.url, id].map(csvCell).join(",");
   });
   const blob = new Blob([head.join(",") + "\n" + rows.join("\n") + "\n"], {type:"text/csv"});
   const a = document.createElement("a");
@@ -543,8 +619,10 @@ $("importFile").addEventListener("change", e => {
     rows.forEach(r => {
       const id = r[ix("job_id")];
       if (!id || APPLIED[id]) return;
-      APPLIED[id] = { date: r[ix("date_applied")], company: r[ix("company")],
-        title: r[ix("title")], location: r[ix("location")],
+      APPLIED[id] = { date: r[ix("date_applied")],
+        stage: ix("stage") >= 0 ? (r[ix("stage")] || "applied") : "applied",
+        stageDate: ix("stage_date") >= 0 ? r[ix("stage_date")] : r[ix("date_applied")],
+        company: r[ix("company")], title: r[ix("title")], location: r[ix("location")],
         score: +r[ix("score")] || 0, liveDays: +r[ix("live_days")] || 0, url: r[ix("url")] };
       added++;
     });
@@ -568,19 +646,21 @@ fetch("jobs.json?t=" + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(d => {
     DATA = d;
+    CLOSED = Object.fromEntries((d.closed || []).map(c => [c.id, c]));
     const fresh = d.jobs.filter(j => (Date.now()/1000 - j.found) < 86400).length;
     $("status").innerHTML = "Swept <b>" + ago(d.generated) + "</b> &middot; <b>" + fresh
       + "</b> new in 24h &middot; <b>" + d.jobs.length + "</b> roles across <b>"
       + d.companies.length + "</b> companies";
     buildMenu(); updateBtnLabel();
     render();
+    if (!$("appliedPanel").hidden) renderApplied();
   })
   .catch(() => {
     $("status").textContent = "No data yet";
     $("list").innerHTML = '<p class="empty">Run <code>python watcher.py run</code> to fill this page. '
       + 'The first sweep of each company records its jobs quietly without alerting, so run it twice '
       + 'before expecting anything new. If you opened this file directly, serve the folder instead: '
-      + '<code>python -m http.server -d site</code>.</p>';
+      + '<code>python -m http.server -d docs</code>.</p>';
   });
 </script>
 </body>

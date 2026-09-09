@@ -178,7 +178,8 @@ class Store:
     # --------------------------------------------------------------- outputs
 
     def export(self, path: str | Path, min_score: int, keep_days: int = 45,
-               max_live_days: int = 0, sponsors_path: str | Path | None = None) -> int:
+               max_live_days: int = 0, sponsors_path: str | Path | None = None,
+               cap_exempt: set[str] | None = None) -> int:
         now = time.time()
         # H-1B approvals per company, if tools/sponsors.py has been run.
         # Absent file means "unknown", which the dashboard shows as a blank, not a no.
@@ -219,13 +220,27 @@ class Store:
                 "intern": roles.is_intern(r["title"]),
                 "h1b": (sponsors.get(r["board"].partition(":")[2], {}).get("approvals")
                         if sponsors else None),
+                "capExempt": bool(cap_exempt and r["board"] in cap_exempt),
             })
+        # Reqs that closed recently. The dashboard matches these against your
+        # applied list, so a job filled after you applied reads as "req closed",
+        # not as a rejection.
+        closed = [
+            {"id": r["uid"], "title": r["title"], "company": r["company"],
+             "closed": round(r["last_seen"])}
+            for r in self.db.execute(
+                "SELECT uid, title, company, last_seen FROM jobs"
+                " WHERE status='closed' AND last_seen > ?",
+                (now - 120 * 86400,),
+            )
+        ]
         companies = sorted({j["company"] for j in jobs})
         payload = {
             "generated": round(now),
             "count": len(jobs),
             "companies": companies,
             "jobs": jobs,
+            "closed": closed,
         }
         Path(path).write_text(json.dumps(payload, separators=(",", ":")))
         return len(jobs)
