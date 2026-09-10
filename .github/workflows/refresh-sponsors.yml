@@ -32,9 +32,16 @@ jobs:
           cache: pip
       - run: pip install "httpx>=0.27"
 
+      # If data/ holds CSVs you downloaded yourself, use those and skip the network
+      # entirely. Otherwise try USCIS directly, which may refuse a datacentre IP.
       - name: Build sponsors.json
         run: |
-          python tools/sponsors.py --years ${{ inputs.years || '2023 2024 2025' }} | tee out.txt
+          if compgen -G "data/h1b_datahubexport-*.csv" > /dev/null; then
+            echo "Using the CSVs committed in data/"
+            python tools/sponsors.py --local data/ --years ${{ inputs.years || '2023 2024 2025' }} | tee out.txt
+          else
+            python tools/sponsors.py --years ${{ inputs.years || '2023 2024 2025' }} | tee out.txt
+          fi
           test -s sponsors.json
 
       - name: Commit

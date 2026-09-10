@@ -30,6 +30,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://www.uscis.gov/sites/default/files/document/data/h1b_datahubexport-{year}.csv"
 
+# uscis.gov rejects obvious bot traffic, so ask the way a browser would.
+HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/128.0 Safari/537.36"),
+    "Accept": "text/csv,application/csv,text/plain,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub",
+}
+
 # Legal wrapping that carries no identity. Stripped from both sides before matching.
 _NOISE = re.compile(
     r"\b(?:inc|inc'd|incorporated|llc|l\.l\.c|llp|lp|plc|pbc|corp|corporation|co|company|"
@@ -143,20 +152,36 @@ def main() -> int:
             url = URL.format(year=year)
             print(f"  downloading {url}")
             try:
-                r = httpx.get(url, timeout=120, follow_redirects=True,
-                              headers={"User-Agent": "job-watcher"})
-                r.raise_for_status()
-                text = r.text
+                r = httpx.get(url, timeout=120, follow_redirects=True, headers=HEADERS)
             except Exception as exc:  # noqa: BLE001
-                print(f"  - {year}: {type(exc).__name__}: {exc}")
+                print(f"  - {year}: request failed, {type(exc).__name__}: {exc}")
                 continue
+            ctype = r.headers.get("content-type", "?")
+            print(f"    HTTP {r.status_code} · {ctype} · {len(r.content):,} bytes")
+            if r.status_code != 200:
+                # Print what came back. A 403 page and a 404 page look nothing
+                # alike, and the difference decides what to do next.
+                snippet = " ".join(r.text[:240].split())
+                print(f"    body starts: {snippet}")
+                continue
+            if "html" in ctype.lower():
+                print("    that is an HTML page, not a CSV. USCIS served an error or a "
+                      "consent page instead of the file.")
+                continue
+            text = r.text
         rows = load_year(text, year, tally)
         if rows:
             got.append(year)
             print(f"  {year}: {rows:,} employer rows with approvals")
 
     if not got:
-        print("\nNo data loaded. Nothing written.")
+        print("\nNo data loaded, so nothing was written.")
+        print("If every year above shows a 403 or an HTML body, USCIS is refusing this")
+        print("machine rather than the file being missing. Download the CSVs yourself")
+        print("from https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub")
+        print("(the 'H-1B Employer Data Hub Files' link), drop them in data/ as")
+        print("h1b_datahubexport-YYYY.csv, commit them, and this becomes:")
+        print("    python tools/sponsors.py --local data/")
         return 1
 
     companies = read_companies(ROOT / args.companies)
